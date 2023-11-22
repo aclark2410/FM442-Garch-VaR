@@ -88,6 +88,44 @@ head(PRC)
 write.csv(Y, file = "Y.csv")
 write.csv(PRC, file = "PRC.csv")
 
+load("Y.RData")
+
+#################### Test for Normality in the returns distribution ####################
+
+check_normality <- function(returns, company_name) {
+  # Get the mean and sd of returns
+  mean_returns <- mean(returns)
+  sd_returns <- sd(returns)
+  
+  # Display mean and standard deviation
+  cat("Mean:", round(mean_returns, 3), "\n")
+  cat("Standard Deviation:", round(sd_returns, 3), "\n")
+  
+  # Create the histogram
+  hist(returns, freq = FALSE, main = paste("Returns of", company_name), col = "lightgrey", breaks = 50)
+  
+  # Add the normal distribution
+  x <- seq(-3, 3, 0.001)
+  lines(x, dnorm(x, mean = mean_returns, sd = sd_returns), lwd = 3, col = "red")
+  
+  # Test for normality
+  jb_test <- jarque.bera.test(returns)
+  cat("Jarque-Bera Test p-value:", jb_test$p.value, "\n")
+  
+  # qqPlot of the normal distribution
+  qqPlot(returns, distribution = "norm", envelope = FALSE, main = "Q-Q Plot")
+  
+  # Q-Q Plots for t-distributions with different degrees of freedom
+  for (df in c(2, 3, 4)) {
+    qqPlot(returns, distribution = "t", df = df, envelope = FALSE, main = paste(df, "Degrees of Freedom"))
+  }
+}
+
+# Normality output
+check_normality(Y$AAPL, "AAPL")
+check_normality(Y$MSFT, "MSFT")
+check_normality(Y$UAL, "UAL")
+
 
 
 ############################# Implementing HS to estimate VaR and ES ##################################
