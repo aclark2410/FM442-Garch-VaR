@@ -11,6 +11,7 @@ library(matrixStats)
 library(dplyr)
 library(data.table)
 library(car)
+library(ggplot2)
 
 # Function to process data
 process_data <- function(file_path) {
@@ -74,14 +75,13 @@ process_data <- function(file_path) {
   save(PRC, file = "PRC.RData")
   
   # Return the processed data
-  return(list(Y = Y, PRC = PRC))
+  return(list(Y = Y, PRC = PRC, UAL = UAL))
 }
 
 processed_data <- process_data("Data.csv")
 
 ############################# Implementing HS to estimate VaR and ES ##################################
 
-rm(list=ls())
 # Load the data
 load("Y.RData")
 
@@ -90,10 +90,33 @@ aaplReturns <- Y$AAPL
 msftReturns <- Y$MSFT
 ualReturns <- Y$UAL
 
-# Function to plot returns 
-plot_returns <- function(date, returns, asset_name) {
-  plot(date, returns, type = "l", main = paste("Returns for", asset_name), xlab = "Date", ylab = "Returns")
+plot_time_series <- function(processed_data) {
+  ggplot(processed_data$UAL, aes(x = as.Date(as.character(date), format="%Y%m%d"), y = UAL)) +
+    geom_line(color = "cornflowerblue") +
+    labs(title = "UAL Historical Time Series",
+         x = "Date",
+         y = "Adjusted Close Price") +
+    theme_minimal() +
+    scale_x_date(date_labels = "%b %Y", date_breaks = "5 year") +
+    theme(
+      panel.background = element_rect(fill = "white"),
+      plot.background = element_rect(fill = "white")
+    )
 }
+
+plot_time_series(processed_data)
+
+
+
+# Function to plot returns
+plot_returns <- function(date, returns, asset_name) {
+  plot(date, returns, type = "l", col = "cornflowerblue",
+       main = paste("Returns for", asset_name), xlab = "Date", ylab = "Returns")
+}
+
+# Example usage
+plot_returns(processed_data$Y$date, aaplReturns, "AAPL")
+
 
 # Plot returns 
 plot_returns(Y$date, aaplReturns, "AAPL")
@@ -117,7 +140,7 @@ calculate_hs_var_and_plot <- function(returns, portfolio_value = 1000, probabili
   quantile_value <- sorted_returns[M]
   
   # Visualize the sorted returns and the quantile
-  plot(sorted_returns, type = "l", main = "Sorted Returns", xlab = "Observations", ylab = "Returns")
+  plot(sorted_returns, type = "l", main = "UAL Sorted Returns", xlab = "Observations", ylab = "Returns")
   segments(x0 = M, y0 = min(sorted_returns) - 0.5, y1 = quantile_value, lty = "dashed", lwd = 2, col = "red")
   segments(x0 = -1000, y0 = quantile_value, x1 = M, lty = "dashed", lwd = 2, col = "red")
   axis(1, at = c(M, 2000, 4000, 6000, 8000), label = c("M", "2000", "4000", "6000", "8000"))
@@ -186,7 +209,7 @@ historical_simulation_with_window <- function(returns, estimation_window = 1000,
   
   # Plot the VaR forecasts
   dates_var <- Y$date[(estimation_window + 1):length(Y$date)]
-  plot(dates_var, VaR_vector, type = "l", main = "VaR HS with Estimation Window",
+  plot(dates_var, VaR_vector, type = "l", main = "UAL VaR HS with Estimation Window",
        col = "red", las = 1, ylab = "USD", xlab = "Date")
   
   return(VaR_vector)
@@ -224,7 +247,7 @@ historical_simulation_with_multiple_windows <- function(returns, windows = c(100
   
   # Plotting VaR forecasts
   plot_dates <- Y$date[(max(windows) + 1):n]
-  plot(HS$HS100, main = "HS with different estimation windows", ylab = "VaR in USD",
+  plot(HS$HS100, main = "UAL HS with different estimation windows", ylab = "VaR in USD",
        xlab = "Date", type = "l", col = "red", lwd = 2)
   lines(HS$HS500, col = "blue", lwd = 2)
   lines(HS$HS1000, col = "green", lwd = 2)
@@ -237,7 +260,7 @@ historical_simulation_with_multiple_windows <- function(returns, windows = c(100
   HS_subset <- HS[(max(windows) + 1):n, ]
   
   # Plotting them all together
-  plot(plot_dates, HS_subset$HS100, main = "HS with different estimation windows", ylab = "VaR in USD",
+  plot(plot_dates, HS_subset$HS100, main = "UAL HS with different estimation windows", ylab = "VaR in USD",
        xlab = "Date", ylim = c(10, 150), type = "l", col = "red", lwd = 2)
   lines(plot_dates, HS_subset$HS500, col = "blue", lwd = 2)
   lines(plot_dates, HS_subset$HS1000, col = "green", lwd = 2)
@@ -445,31 +468,17 @@ load("stdGARCH300.RData")
 load("stdGARCH2000.RData")
 
 
-# Comparing Normal Garch Models against each other
-
-#Bind into a matrix
-GARCH_VaR <- cbind(aaplVaR, GARCH300, GARCH2000, stdGARCH300, stdGARCH2000)
-
-# Plot and modify axis to include dates
-matplot(dates, GARCH_VaR, type = "l", lty = 1, col = 1:2, xaxt = "n", main = "GARCH VaR", xlab = "Date", ylab = "VaR USD")
-axis.Date(1, at = seq(min(dates), max(dates), by = "years"))
-
-# Legend
-legend("topleft", legend = c("WE: 300", "WE: 2000"), lty = 1, col = 1:2)
-
-
-
 # Combining all VaR forecasts------------------------
 #Now let's extend it by adding GARCH VaRs
-VaR <- cbind(aaplVaR, GARCH300, GARCH2000, stdGARCH300, stdGARCH2000)
+VaR <- cbind(ualVaR, GARCH300, GARCH2000, stdGARCH300, stdGARCH2000)
 
 JUST_GARCH <- cbind(GARCH300, stdGARCH300, GARCH2000, stdGARCH2000)
 
 GARCH300_VaR<- cbind(GARCH300, stdGARCH300)
 
-GARCH300_VaR_and_HS_VaR <- cbind(aaplVaR, GARCH300, stdGARCH300)
+GARCH300_VaR_and_HS_VaR <- cbind(ualVaR, GARCH300, stdGARCH300)
 
-GARCH2000_VaR_and_HS_VaR <- cbind(aaplVaR, GARCH2000, stdGARCH2000)
+GARCH2000_VaR_and_HS_VaR <- cbind(ualVaR, GARCH2000, stdGARCH2000)
 
 #Comparisons---------------------
 
@@ -484,25 +493,25 @@ round(colSds(as.matrix(VaR),na.rm=TRUE))
 ######################## HS and Garch VaR Plots ########################
 
 # Plot all
-matplot(dates, VaR, type = "l", lty = 1, col = 1:6, xaxt = "n", main = "VaR forecasts", xlab = "Date", ylab = "VaR USD")
+matplot(dates, VaR, type = "l", lty = 1, col = 1:6, xaxt = "n", main = "All models VaR forecasts", xlab = "Date", ylab = "VaR USD")
 axis.Date(1, at = seq(min(dates), max(dates), by = "years"))
 
 # Legend
 legend("top", legend = colnames(VaR),cex=0.6, lty = 1, col = 1:6)
 
-matplot(dates, GARCH300_VaR, type = "l", lty = 1, col = 1:6, xaxt = "n", main = "VaR forecasts", xlab = "Date", ylab = "VaR USD")
+matplot(dates, GARCH300_VaR, type = "l", lty = 1, col = 1:6, xaxt = "n", main = "Garch 300 VaR forecasts", xlab = "Date", ylab = "VaR USD")
 axis.Date(1, at = seq(min(dates), max(dates), by = "years"))
 
 # Legend
 legend("top", legend = colnames(GARCH300_VaR),cex=0.6, lty = 1, col = 1:6)
 
-matplot(dates, GARCH300_VaR_and_HS_VaR, type = "l", lty = 1, col = 1:6, xaxt = "n", main = "VaR forecasts", xlab = "Date", ylab = "VaR USD")
+matplot(dates, GARCH300_VaR_and_HS_VaR, type = "l", lty = 1, col = 1:6, xaxt = "n", main = "Garch 300 and HS VaR forecasts", xlab = "Date", ylab = "VaR USD")
 axis.Date(1, at = seq(min(dates), max(dates), by = "years"))
 
 ## Legend
 legend("top", legend = colnames(GARCH300_VaR_and_HS_VaR),cex=0.6, lty = 1, col = 1:6)
 
-matplot(dates, JUST_GARCH, type = "l", lty = 1, col = 1:6, xaxt = "n", main = "VaR forecasts", xlab = "Date", ylab = "VaR USD")
+matplot(dates, JUST_GARCH, type = "l", lty = 1, col = 1:6, xaxt = "n", main = "Garch only VaR forecasts", xlab = "Date", ylab = "VaR USD")
 axis.Date(1, at = seq(min(dates), max(dates), by = "years"))
 
 ## Legend
@@ -533,21 +542,21 @@ just_garch_windows
 
 # Plot all
 matplot(dates[start:end], GARCH300_VaR_and_HS_VaR[start:end,], type = "l", lty = 1, col = 1:6, xaxt = "n",
-        main = "VaR forecasts", xlab = "Date", ylab = "VaR USD")
+        main = "Largest Estimation Window Garch 300 and HS VaR Forecasts", xlab = "Date", ylab = "VaR USD")
 axis.Date(1, at = seq(dates[max(Garch300_windows)], max(dates), by = "years"))
 
 # Legend
 legend("topright", legend = colnames(GARCH300_VaR_and_HS_VaR),cex=0.6, lty = 1, col = 1:6)
 
 matplot(dates[start:end], GARCH2000_VaR_and_HS_VaR[start:end,], type = "l", lty = 1, col = 1:6, xaxt = "n",
-        main = "VaR forecasts", xlab = "Date", ylab = "VaR USD")
+        main = "Largest Estimation Window Garch 2000 and HS VaR Forecasts", xlab = "Date", ylab = "VaR USD")
 axis.Date(1, at = seq(dates[max(Garch2000_windows)], max(dates), by = "years"))
 
 # Legend
 legend("topright", legend = colnames(GARCH2000_VaR_and_HS_VaR),cex=0.6, lty = 1, col = 1:6)
 
 matplot(dates[start:end], JUST_GARCH[start:end,], type = "l", lty = 1, col = 1:6, xaxt = "n",
-        main = "VaR forecasts", xlab = "Date", ylab = "VaR USD")
+        main = "Largest Estimation Window Garch Only VaR Forecasts", xlab = "Date", ylab = "VaR USD")
 axis.Date(1, at = seq(dates[max(just_garch_windows)], max(dates), by = "years"))
 
 # Legend
@@ -597,9 +606,9 @@ dates[which(Violations$GARCH2000)]
 dates[which(Violations$stdGARCH2000)]
 
 
-# Get a random day where EWMA VaR is violated using sample()
+# Get a random day where HS VaR is violated using sample()
 # sample() returns specified size of elements from input
-random_day <- sample(dates[which(Violations$HS2000)],1)
+random_day <- sample(dates[which(Violations$GARCH300)],1)
 
 # Find the index in dates using which()
 day_index <- which(dates == random_day)
@@ -611,14 +620,15 @@ Violations[day_index,] #checks in which other models there was a violation
 
 
 # Plotting the violations
-plot(dates[start:end], VaR$GARCH300[start:end],xlab="Dates", ylab="GARCH 300 VaR", type = "l", main = "GARCH 300 VaR with violations",)
+plot(dates[start:end], VaR$GARCH300[start:end], xlab = "Dates", ylab = "GARCH 300 VaR", 
+     type = "l", col = "cornflowerblue", main = "GARCH 300 VaR with violations")
 
 # Add points where the violations happened
 #cex can again control the size of the points
 points(dates[Violations$GARCH300], VaR$GARCH300[Violations$GARCH300], cex=0.5,pch = 16, col = "red")
 
 # Plotting the violations
-plot(dates[start:end], VaR$stdGARCH300[start:end],xlab="Dates", ylab="stdGARCH 300 VaR", type = "l", main = "STD GARCH 300 VaR with violations",)
+plot(dates[start:end], VaR$stdGARCH300[start:end],xlab="Dates", ylab="stdGARCH 300 VaR", type = "l", col = "cornflowerblue",main = "t-GARCH 300 VaR with violations")
 
 # Add points where the violations happened
 #cex can again control the size of the points
@@ -633,7 +643,7 @@ sum(w, na.rm = TRUE)
 
 
 # Plotting the returns and adding the days where all models had a violation
-plot(dates, y, main = "Apple returns", type = "l", lwd = 2, las = 1,
+plot(dates, y, main = "UAL Returns with Violations", type = "l",col = "cornflowerblue", lwd = 2, las = 1,
      xlab = "Date", ylab = "Returns")
 points(dates[w], y[w], cex=0.5,pch = 16, col = "red")
 
@@ -650,9 +660,11 @@ Violations <- Violations[!is.na(Violations[,1]),]
 
 # Get the column sums
 V <- colSums(Violations)
+V
 
 # Calculate expected violations
 EV <- dim(Violations)[1]*p
+EV
 
 # Violation Ratios
 VR <- V/EV
@@ -685,7 +697,7 @@ sort(round(abs(VR-1),3))
 
 # Stress Testing---------------------------------------------------
 
-# Subset for crisis peridos
+# Subset for crisis periods
 crisis <- year(dates) >= 2019 & year(dates) < 2022
 y_crisis <- y[crisis]
 VaR_crisis <- VaR[crisis,]
