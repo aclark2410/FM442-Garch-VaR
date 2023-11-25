@@ -1,0 +1,93 @@
+Garach VaR statistics 
+
+UAL HS Stats:
+
+UAL HS VaR over all of the data = 55.82143
+
+Expected Shortfall for UAL over all of the data: 102.594 
+
+$means
+   HS100      HS500     HS1000     HS2000 
+42.53491   42.06627   39.19795   46.09958 
+
+$sds
+    HS100     HS500    HS1000    HS2000 
+26.042233 13.793012  7.325109 13.140380 
+
+
+Statistics of all of the models (HS, Garch and t-Garch)
+
+Means for each forecast
+
+ HS100        HS500       HS1000       HS2000     
+51.274       54.610       48.908       46.100
+
+GARCH300    GARCH2000  	stdGARCH300 	stdGARCH2000 
+58.285       45.500     	58.804       	45.893 
+
+
+Standard deviations for each forecast
+
+HS100        HS500       HS1000       HS2000     
+ 34          	31          21       	    13
+
+
+GARCH300    GARCH2000   stdGARCH300      stdGARCH2000 
+  43         	24          	 43          			26 
+
+
+
+Violations
+
+In our sample only on 42 days do all of the models agree that there are violations. 
+
+Violations per model
+
+ HS100        HS500       HS1000       HS2000     
+ 107           109          114          105           
+
+
+GARCH300    GARCH2000  stdGARCH300 stdGARCH2000 
+  98           92          95            95
+
+
+Total observations = 2028
+
+We expect VaR to be violated 5% of the time, therefore multiplying by 0.05 we get the expected violations as 101.4 (i.e 101 violations).
+
+Violation ratios:
+
+HS100        HS500       HS1000      HS2000
+1.055        1.075        1.124       1.036       
+
+
+GARCH300    GARCH2000  stdGARCH300 stdGARCH2000 
+ 0.966       0.907       	 0.937       0.937
+
+
+The empirical simulations (HS) over estimate the number of violations by 6%, 8%, 12% and 3% respectively. 
+
+The Garch models under estimate the number of violations. 
+
+According to the rule of thumb, all of the models are good models. 
+
+Stress testing:
+
+Using date from 2019 - 2022 to cover the Covid period to capture the high volatility in the time series.
+
+HS100        HS500       HS1000       HS2000     
+1.057        1.427       1.638        1.876        
+
+
+GARCH300    GARCH2000    stdGARCH300   stdGARCH2000 
+1.083      	 1.057      	  0.951         1.083 
+
+
+HS100 = Model is good 
+HS500 = Model is acceptable
+HS1000 = Model is bad
+HS2000 = Model is bad
+GARCH300 = Model is good
+GARCH2000 = Model is good
+StdGARCH300 = Model is good
+StdGARCH2000 = Model is good
