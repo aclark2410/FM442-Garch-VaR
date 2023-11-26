@@ -404,6 +404,60 @@ DoGARCH <- function(y, spec, probability = 0.05, portfolio_value = 1, WE = 1000)
   return(VaR)
 }
 
+DoTGARCH <- function(y, spec, probability = 0.05, portfolio_value = 1, WE = 1000){
+  # GARCH function that takes as argument:
+  # y: A vector of returns, ordered by date
+  # spec: The ugarchspec object with the GARCH specification
+  # probability: The probability to be used for VaR - Default 5%
+  # portfolio_value: The portfolio value - Default 1
+  # WE: Estimation window for the forecast - Default 1000 days
+  
+  # To calculate elapsed time, first get the current time
+  old <- Sys.time()
+  
+  # Print message
+  cat("Doing GARCH VaR forecast", "\n",
+      "Estimation window:", WE, "\n",
+      "Number of observations:", length(y), "\n",
+      "VaR probability:", probability, "\n",
+      "Portfolio value:", portfolio_value)
+  
+  # Number of observations
+  n <- length(y)
+  
+  # Initialize empty VaR vector
+  VaR <- rep(NA, n)
+  
+  # Do a loop for the forecast
+  for (i in 1:(n-WE)){
+    
+    # Subset the dataset to the estimation window
+    window <- y[i:(i+WE-1)]
+    
+    # Fit the GARCH
+    res <- ugarchfit(spec = spec, data = window, solver = "hybrid")
+    
+    # Save coefficients
+    omega <- coef(res)[1]
+    alpha <- coef(res)[2]
+    beta <- coef(res)[3]
+    nu <- coef(res)[4]
+    
+    # Estimate sigma2 using the last observation of window
+    sigma2 <- omega + alpha*tail(window,1)^2 + beta*tail(res@fit$var,1)
+    
+    # Allocate the VaR forecast in the vector
+    VaR[i+WE] <- -sqrt(sigma2) * portfolio_value * qt(probability, nu) /sqrt(nu/(nu-2))
+  }
+  
+  # Get the new time and print the elapsed time
+  time <- difftime(Sys.time(), old, units = "secs")
+  cat("\n", "Elapsed time:", round(time,4), "seconds")
+  
+  # Return the VaR vector
+  return(VaR)
+}
+
 
 
 # Normal garch (1,1)
@@ -441,7 +495,7 @@ save(GARCH2000, file = "GARCH2000.RData")
 #--------------------------------------------------------
 
 # Student t GARCH VaR for 300 days
-stdGARCH300 <- DoGARCH(y, spec = studenttspec, probability = 0.05, portfolio_value = 1000, WE = 300)
+stdGARCH300 <- DoTGARCH(y, spec = studenttspec, probability = 0.05, portfolio_value = 1000, WE = 300)
 
 
 #Let's save it so that we don't have to wait every time: 
@@ -451,7 +505,7 @@ save(stdGARCH300, file = "stdGARCH300.RData")
 
 
 # Student t GARCH VaR for different window (2000 days)
-stdGARCH2000 <- DoGARCH(y, spec = studenttspec, probability = 0.05, portfolio_value = 1000, WE = 2000)
+stdGARCH2000 <- DoTGARCH(y, spec = studenttspec, probability = 0.05, portfolio_value = 1000, WE = 2000)
 
 
 #Let's save it again
@@ -542,21 +596,21 @@ just_garch_windows
 
 # Plot all
 matplot(dates[start:end], GARCH300_VaR_and_HS_VaR[start:end,], type = "l", lty = 1, col = 1:6, xaxt = "n",
-        main = "Largest Estimation Window Garch 300 and HS VaR Forecasts", xlab = "Date", ylab = "VaR USD")
+        main = "Largest estimation window Garch 300 and HS VaR forecasts", xlab = "Date", ylab = "VaR USD")
 axis.Date(1, at = seq(dates[max(Garch300_windows)], max(dates), by = "years"))
 
 # Legend
 legend("topright", legend = colnames(GARCH300_VaR_and_HS_VaR),cex=0.6, lty = 1, col = 1:6)
 
 matplot(dates[start:end], GARCH2000_VaR_and_HS_VaR[start:end,], type = "l", lty = 1, col = 1:6, xaxt = "n",
-        main = "Largest Estimation Window Garch 2000 and HS VaR Forecasts", xlab = "Date", ylab = "VaR USD")
+        main = "Largest estimation window Garch 2000 and HS VaR forecasts", xlab = "Date", ylab = "VaR USD")
 axis.Date(1, at = seq(dates[max(Garch2000_windows)], max(dates), by = "years"))
 
 # Legend
 legend("topright", legend = colnames(GARCH2000_VaR_and_HS_VaR),cex=0.6, lty = 1, col = 1:6)
 
 matplot(dates[start:end], JUST_GARCH[start:end,], type = "l", lty = 1, col = 1:6, xaxt = "n",
-        main = "Largest Estimation Window Garch Only VaR Forecasts", xlab = "Date", ylab = "VaR USD")
+        main = "Largest estimation window Garch only VaR forecasts", xlab = "Date", ylab = "VaR USD")
 axis.Date(1, at = seq(dates[max(just_garch_windows)], max(dates), by = "years"))
 
 # Legend
@@ -606,7 +660,7 @@ dates[which(Violations$GARCH2000)]
 dates[which(Violations$stdGARCH2000)]
 
 
-# Get a random day where HS VaR is violated using sample()
+# Get a random day where VaR is violated using sample()
 # sample() returns specified size of elements from input
 random_day <- sample(dates[which(Violations$GARCH300)],1)
 
@@ -621,14 +675,14 @@ Violations[day_index,] #checks in which other models there was a violation
 
 # Plotting the violations
 plot(dates[start:end], VaR$GARCH300[start:end], xlab = "Dates", ylab = "GARCH 300 VaR", 
-     type = "l", col = "cornflowerblue", main = "GARCH 300 VaR with violations")
+     type = "l", col = "cornflowerblue", main = "Garch 300 VaR with violations")
 
 # Add points where the violations happened
 #cex can again control the size of the points
 points(dates[Violations$GARCH300], VaR$GARCH300[Violations$GARCH300], cex=0.5,pch = 16, col = "red")
 
 # Plotting the violations
-plot(dates[start:end], VaR$stdGARCH300[start:end],xlab="Dates", ylab="stdGARCH 300 VaR", type = "l", col = "cornflowerblue",main = "t-GARCH 300 VaR with violations")
+plot(dates[start:end], VaR$stdGARCH300[start:end],xlab="Dates", ylab="stdGARCH 300 VaR", type = "l", col = "cornflowerblue",main = "t-Garch 300 VaR with violations")
 
 # Add points where the violations happened
 #cex can again control the size of the points
@@ -643,7 +697,7 @@ sum(w, na.rm = TRUE)
 
 
 # Plotting the returns and adding the days where all models had a violation
-plot(dates, y, main = "UAL Returns with Violations", type = "l",col = "cornflowerblue", lwd = 2, las = 1,
+plot(dates, y, main = "UAL returns with violations", type = "l",col = "cornflowerblue", lwd = 2, las = 1,
      xlab = "Date", ylab = "Returns")
 points(dates[w], y[w], cex=0.5,pch = 16, col = "red")
 
